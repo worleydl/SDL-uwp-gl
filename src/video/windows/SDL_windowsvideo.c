@@ -603,6 +603,7 @@ static SDL_bool DXGI_LoadDLL(void **pDXGIDLL, IDXGIFactory **pDXGIFactory)
 }
 #endif
 
+#ifndef  __XBOXSERIES__
 SDL_bool SDL_DXGIGetOutputInfo(int displayIndex, int *adapterIndex, int *outputIndex)
 {
 #if !HAVE_DXGI_H
@@ -679,6 +680,7 @@ SDL_bool SDL_DXGIGetOutputInfo(int displayIndex, int *adapterIndex, int *outputI
     }
 #endif
 }
+#endif // ! __XBOXSERIES__
 
 SDL_bool WIN_IsPerMonitorV2DPIAware(_THIS)
 {

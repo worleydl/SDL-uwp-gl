@@ -32,14 +32,20 @@ int (*WINRT_SDLAppEntryPoint)(int, char **) = NULL;
 extern "C" DECLSPEC int
 SDL_WinRTRunApp(SDL_main_func mainFunction, void *xamlBackgroundPanel)
 {
+#ifndef __XBOXSERIES__
     if (xamlBackgroundPanel) {
+
         return SDL_WinRTInitXAMLApp(mainFunction, xamlBackgroundPanel);
     } else {
+#endif
         if (FAILED(Windows::Foundation::Initialize(RO_INIT_MULTITHREADED))) {
             return 1;
         }
+        
         return SDL_WinRTInitNonXAMLApp(mainFunction);
+#ifndef __XBOXSERIES__
     }
+#endif
 }
 
 extern "C" DECLSPEC SDL_WinRT_DeviceFamily

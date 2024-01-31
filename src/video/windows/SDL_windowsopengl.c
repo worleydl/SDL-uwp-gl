@@ -20,10 +20,19 @@
 */
 #include "../../SDL_internal.h"
 
-#if SDL_VIDEO_DRIVER_WINDOWS
+#if SDL_VIDEO_DRIVER_WINDOWS || SDL_VIDEO_DRIVER_WINRT
 
 #include "SDL_loadso.h"
+#ifdef __WINRT__
+#include "..\winrt\SDL_winrtvideo_cpp.h"
+#include "SDL_windowsopengl.h"
+
+/* Sets an error message based on GetLastError(). Always return -1. */
+extern int WIN_SetError(const char *prefix);
+
+#else
 #include "SDL_windowsvideo.h"
+#endif
 #include "SDL_windowsopengles.h"
 #include "SDL_hints.h"
 
@@ -207,9 +216,12 @@ int WIN_GL_LoadLibrary(_THIS, const char *path)
        SDL_GL_ExtensionSupported and SDL_GL_GetProcAddress as they are
        public API functions.
     */
+    //TODO
+    #ifndef __WINRT__
     ++_this->gl_config.driver_loaded;
     WIN_GL_InitExtensions(_this);
     --_this->gl_config.driver_loaded;
+    #endif
 
     return 0;
 }
@@ -411,6 +423,7 @@ static SDL_bool HasExtension(const char *extension, const char *extensions)
     return SDL_FALSE;
 }
 
+#ifndef __WINRT__
 void WIN_GL_InitExtensions(_THIS)
 {
     /* *INDENT-OFF* */ /* clang-format off */
@@ -687,6 +700,7 @@ int WIN_GL_SetupWindow(_THIS, SDL_Window *window)
     WIN_GL_MakeCurrent(_this, current_win, current_ctx);
     return retval;
 }
+#endif
 
 SDL_bool WIN_GL_UseEGL(_THIS)
 {

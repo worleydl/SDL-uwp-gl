@@ -35,10 +35,14 @@
 #define SDL_WINRT_USE_APPLICATIONVIEW 1
 #endif
 
+#ifdef __cplusplus_winrt
 extern "C" {
+#endif
 #include "../SDL_sysvideo.h"
 #include "../SDL_egl_c.h"
+#ifdef __cplusplus_winrt
 }
+#endif
 
 /* Private display data */
 typedef struct SDL_VideoData
@@ -49,9 +53,14 @@ typedef struct SDL_VideoData
     IUnknown *winrtEglWindow;
 
     /* Event token(s), for unregistering WinRT event handler(s).
-       These are just a struct with a 64-bit integer inside them
-    */
+       These are just a struct with a 64-bit integer inside them \
+*/                                                           \
+#ifdef __cplusplus_winrt
     Windows::Foundation::EventRegistrationToken gameBarIsInputRedirectedToken;
+#else
+    __int64 gameBarIsInputRedirectedToken;
+#endif
+
 
     /* A WinRT DisplayRequest, used for implementing SDL_*ScreenSaver() functions.
      * This is really a pointer to a 'ABI::Windows::System::Display::IDisplayRequest *',
@@ -70,7 +79,9 @@ extern SDL_Window *WINRT_GlobalSDLWindow;
    SDL_Window flags that can be updated should be specified in 'mask'.
 */
 extern void WINRT_UpdateWindowFlags(SDL_Window *window, Uint32 mask);
+#ifdef __cplusplus_winrt
 extern "C" Uint32 WINRT_DetectWindowFlags(SDL_Window *window); /* detects flags w/o applying them */
+#endif
 
 /* Display mode internals */
 // typedef struct
@@ -90,18 +101,24 @@ extern "C" Uint32 WINRT_DetectWindowFlags(SDL_Window *window); /* detects flags 
 /* Converts DIPS to/from physical pixels */
 #define WINRT_DIPS_TO_PHYSICAL_PIXELS(DIPS)    ((int)(0.5f + (((float)(DIPS) * (float)WINRT_DISPLAY_PROPERTY(LogicalDpi)) / 96.f)))
 #define WINRT_PHYSICAL_PIXELS_TO_DIPS(PHYSPIX) (((float)(PHYSPIX)*96.f) / WINRT_DISPLAY_PROPERTY(LogicalDpi))
+#endif
 
 /* Internal window data */
-struct SDL_WindowData
+typedef struct SDL_WindowData
 {
+#ifdef SDL_VIDEO_OPENGL_WGL
+    HDC hdc;
+#endif
     SDL_Window *sdlWindow;
+#ifdef __cplusplus_winrt
     Platform::Agile<Windows::UI::Core::CoreWindow> coreWindow;
+#endif
 #ifdef SDL_VIDEO_OPENGL_EGL
     EGLSurface egl_surface;
 #endif
+#ifdef __cplusplus_winrt
 #if SDL_WINRT_USE_APPLICATIONVIEW
     Windows::UI::ViewManagement::ApplicationView ^ appView;
 #endif
-};
-
-#endif // ifdef __cplusplus_winrt
+#endif
+} SDL_WindowData;

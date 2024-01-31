@@ -53,9 +53,12 @@ void WINRT_PumpEvents(_THIS)
 {
     if (SDL_WinRTGlobalApp) {
         SDL_WinRTGlobalApp->PumpEvents();
-    } else if (WINRT_XAMLWasEnabled) {
+    }
+#ifndef __XBOXSERIES__
+    else if (WINRT_XAMLWasEnabled) {
         WINRT_YieldXAMLThread();
     }
+#endif
 }
 
 /* XAML Thread management */

@@ -60,6 +60,7 @@ extern "C" {
 #include "../../render/SDL_sysrender.h"
 #include "SDL_syswm.h"
 #include "SDL_winrtopengles.h"
+#include "../../video/windows/SDL_windowsopengl.h"
 #include "../../core/windows/SDL_windows.h"
 }
 
@@ -160,6 +161,17 @@ static SDL_VideoDevice *WINRT_CreateDevice(void)
     device->GL_GetSwapInterval = WINRT_GLES_GetSwapInterval;
     device->GL_SwapWindow = WINRT_GLES_SwapWindow;
     device->GL_DeleteContext = WINRT_GLES_DeleteContext;
+#elif SDL_VIDEO_OPENGL_WGL
+    /* Use EGL based functions */
+    device->GL_LoadLibrary = WIN_GL_LoadLibrary;
+    device->GL_GetProcAddress = WIN_GL_GetProcAddress;
+    device->GL_UnloadLibrary = WIN_GL_UnloadLibrary;
+    device->GL_CreateContext = WIN_GL_CreateContext;
+    device->GL_MakeCurrent = WIN_GL_MakeCurrent;
+    device->GL_SetSwapInterval = WIN_GL_SetSwapInterval;
+    device->GL_GetSwapInterval = WIN_GL_GetSwapInterval;
+    device->GL_SwapWindow = WIN_GL_SwapWindow;
+    device->GL_DeleteContext = WIN_GL_DeleteContext;
 #endif
     device->free = WINRT_DeleteDevice;
 
@@ -253,7 +265,21 @@ int WINRT_VideoInit(_THIS)
     return 0;
 }
 
+#ifdef SDL_VIDEO_OPENGL_WGL
+Uint32 D3D11_DXGIFormatToSDLPixelFormat(DXGI_FORMAT dxgiFormat)
+{
+    switch (dxgiFormat) {
+    case DXGI_FORMAT_B8G8R8A8_UNORM:
+        return SDL_PIXELFORMAT_ARGB8888;
+    case DXGI_FORMAT_B8G8R8X8_UNORM:
+        return SDL_PIXELFORMAT_RGB888;
+    default:
+        return SDL_PIXELFORMAT_UNKNOWN;
+    }
+}
+#else
 extern "C" Uint32 D3D11_DXGIFormatToSDLPixelFormat(DXGI_FORMAT dxgiFormat);
+#endif
 
 static void WINRT_DXGIModeToSDLDisplayMode(const DXGI_MODE_DESC *dxgiMode, SDL_DisplayMode *sdlMode)
 {
@@ -620,17 +646,20 @@ int WINRT_CreateWindow(_THIS, SDL_Window *window)
        'coreWindow' field will only be set (to a non-null value) if XAML isn't
        enabled.
     */
+#ifndef __XBOXSERIES__
     if (!WINRT_XAMLWasEnabled) {
+#endif
         data->coreWindow = CoreWindow::GetForCurrentThread();
 #if SDL_WINRT_USE_APPLICATIONVIEW
         data->appView = ApplicationView::GetForCurrentView();
 #endif
+#ifndef __XBOXSERIES__
     }
-
+#endif
     /* Make note of the requested window flags, before they start getting changed. */
     const Uint32 requestedFlags = window->flags;
 
-#if SDL_VIDEO_OPENGL_EGL
+#if SDL_VIDEO_OPENGL_EGL 
     /* Setup the EGL surface, but only if OpenGL ES 2 was requested. */
     if (!(window->flags & SDL_WINDOW_OPENGL)) {
         /* OpenGL ES 2 wasn't requested.  Don't set up an EGL surface. */
@@ -678,6 +707,8 @@ int WINRT_CreateWindow(_THIS, SDL_Window *window)
             return SDL_SetError("No supported means to create an EGL window surface are available");
         }
     }
+#elif SDL_VIDEO_OPENGL_WGL
+    data->hdc = (HDC)data->coreWindow.Get();
 #endif
 
     /* Determine as many flags dynamically, as possible. */
@@ -691,6 +722,11 @@ int WINRT_CreateWindow(_THIS, SDL_Window *window)
     }
 #endif
 
+#if SDL_VIDEO_OPENGL_WGL
+    window->flags |= SDL_WINDOW_OPENGL;
+#endif
+
+#ifndef __XBOXSERIES__
     if (WINRT_XAMLWasEnabled) {
         /* TODO, WinRT: set SDL_Window size, maybe position too, from XAML control */
         window->x = 0;
@@ -699,6 +735,7 @@ int WINRT_CreateWindow(_THIS, SDL_Window *window)
         SDL_SetMouseFocus(NULL);    // TODO: detect this
         SDL_SetKeyboardFocus(NULL); // TODO: detect this
     } else {
+#endif
         /* WinRT 8.x apps seem to live in an environment where the OS controls the
            app's window size, with some apps being fullscreen, depending on
            user choice of various things.  For now, just adapt the SDL_Window to
@@ -739,7 +776,9 @@ int WINRT_CreateWindow(_THIS, SDL_Window *window)
         if (isWindowActive) {
             SDL_SetKeyboardFocus(window);
         }
+#ifndef __XBOXSERIES__
     }
+#endif
 
     /* Make sure the WinRT app's IFramworkView can post events on
        behalf of SDL:

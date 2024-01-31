@@ -43,7 +43,9 @@ typedef struct
     HDC mdc;
     HINSTANCE hinstance;
     HBITMAP hbm;
+#ifndef SDL_BUILDING_WINRT
     WNDPROC wndproc;
+#endif // ! SDL_BUILDING_WINRT
     HHOOK keyboard_hook;
     SDL_bool created;
     WPARAM mouse_button_flags;

@@ -20,7 +20,7 @@
 */
 #include "../../SDL_internal.h"
 
-#if SDL_VIDEO_DRIVER_WINRT
+#if SDL_VIDEO_DRIVER_WINRT || SDL_VIDEO_DRIVER_KEYBOARD_WINRT
 
 /* Windows-specific includes */
 #include <Windows.h>
