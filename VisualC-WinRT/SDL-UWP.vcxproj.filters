@@ -207,9 +207,6 @@
     <ClInclude Include="..\src\core\winrt\SDL_winrtapp_direct3d.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\core\winrt\SDL_winrtapp_xaml.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\dynapi\SDL_dynapi.h">
       <Filter>Source Files</Filter>
     </ClInclude>
@@ -498,9 +495,6 @@
     <ClCompile Include="..\src\core\winrt\SDL_winrtapp_direct3d.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\core\winrt\SDL_winrtapp_xaml.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\cpuinfo\SDL_cpuinfo.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -535,9 +529,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\src\filesystem\winrt\SDL_sysfilesystem.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\file\SDL_rwops.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\src\haptic\dummy\SDL_syshaptic.c">
@@ -837,6 +828,8 @@
     <ClInclude Include="..\src\video\windows\SDL_windowsopengl.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\render\opengl\SDL_glfuncs.h" />
+    <ClInclude Include="..\src\render\opengl\SDL_shaders_gl.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\joystick\windows\SDL_windows_gaming_input.c">
@@ -849,6 +842,11 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\src\video\windows\SDL_windowsopengl.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\render\opengl\SDL_render_gl.c" />
+    <ClCompile Include="..\src\render\opengl\SDL_shaders_gl.c" />
+    <ClCompile Include="..\src\file\SDL_rwops.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

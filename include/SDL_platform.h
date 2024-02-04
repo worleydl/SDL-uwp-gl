@@ -189,7 +189,7 @@
 #define __WIN32__ 1
 #endif
 /* This is to support generic "any GDK" separate from a platform-specific GDK */
-#if defined(__WINGDK__) || defined(__XBOXONE__) || defined(__XBOXSERIES__)
+#if (defined(__WINGDK__) || defined(__XBOXONE__) || defined(__XBOXSERIES__)) && !defined(__WINRT__)
 #undef __GDK__
 #define __GDK__ 1
 #endif
