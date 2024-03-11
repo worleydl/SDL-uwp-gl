@@ -30,16 +30,16 @@
 
 /* Standard C++11 includes */
 #include <functional>
-#include <string>
 #include <sstream>
+#include <string>
 using namespace std;
 
 /* Windows includes */
 #include <agile.h>
-#include <windows.graphics.display.h>
-#include <windows.system.display.h>
 #include <dxgi.h>
 #include <dxgi1_2.h>
+#include <windows.graphics.display.h>
+#include <windows.system.display.h>
 using namespace Windows::ApplicationModel::Core;
 using namespace Windows::Foundation;
 using namespace Windows::Graphics::Display;
@@ -52,27 +52,27 @@ static const GUID SDL_IID_IDXGIFactory2 = { 0x50c83a1c, 0xe072, 0x4c48, { 0x87, 
 
 /* SDL includes */
 extern "C" {
-#include "SDL_video.h"
-#include "SDL_mouse.h"
-#include "../SDL_sysvideo.h"
-#include "../SDL_pixels_c.h"
+#include "../../core/windows/SDL_windows.h"
 #include "../../events/SDL_events_c.h"
 #include "../../render/SDL_sysrender.h"
-#include "SDL_syswm.h"
-#include "SDL_winrtopengles.h"
 #include "../../video/windows/SDL_windowsopengl.h"
-#include "../../core/windows/SDL_windows.h"
+#include "../SDL_pixels_c.h"
+#include "../SDL_sysvideo.h"
+#include "SDL_mouse.h"
+#include "SDL_syswm.h"
+#include "SDL_video.h"
+#include "SDL_winrtopengles.h"
 }
 
 #include "../../core/winrt/SDL_winrtapp_direct3d.h"
 #include "../../core/winrt/SDL_winrtapp_xaml.h"
-#include "SDL_winrtvideo_cpp.h"
+#include "SDL_hints.h"
+#include "SDL_main.h"
+#include "SDL_system.h"
 #include "SDL_winrtevents_c.h"
 #include "SDL_winrtgamebar_cpp.h"
 #include "SDL_winrtmouse_c.h"
-#include "SDL_main.h"
-#include "SDL_system.h"
-#include "SDL_hints.h"
+#include "SDL_winrtvideo_cpp.h"
 
 /* Initialization/Query functions */
 static int WINRT_VideoInit(_THIS);
@@ -81,12 +81,11 @@ static int WINRT_SetDisplayMode(_THIS, SDL_VideoDisplay *display, SDL_DisplayMod
 static void WINRT_VideoQuit(_THIS);
 
 /* Window functions */
-static int WINRT_CreateWindow(_THIS, SDL_Window * window);
-static void WINRT_SetWindowSize(_THIS, SDL_Window * window);
-static void WINRT_SetWindowFullscreen(_THIS, SDL_Window * window, SDL_VideoDisplay * display, SDL_bool fullscreen);
-static void WINRT_DestroyWindow(_THIS, SDL_Window * window);
-static SDL_bool WINRT_GetWindowWMInfo(_THIS, SDL_Window * window, SDL_SysWMinfo * info);
-
+static int WINRT_CreateWindow(_THIS, SDL_Window *window);
+static void WINRT_SetWindowSize(_THIS, SDL_Window *window);
+static void WINRT_SetWindowFullscreen(_THIS, SDL_Window *window, SDL_VideoDisplay *display, SDL_bool fullscreen);
+static void WINRT_DestroyWindow(_THIS, SDL_Window *window);
+static SDL_bool WINRT_GetWindowWMInfo(_THIS, SDL_Window *window, SDL_SysWMinfo *info);
 
 /* Misc functions */
 static ABI::Windows::System::Display::IDisplayRequest *WINRT_CreateDisplayRequest(_THIS);
@@ -625,6 +624,84 @@ static bool WINRT_IsCoreWindowActive(CoreWindow ^ coreWindow)
     return true;
 }
 
+bool is_running_on_xbox(void)
+{
+    Platform::String ^ device_family = Windows::System::Profile::AnalyticsInfo::VersionInfo->DeviceFamily;
+    return (device_family == L"Windows.Xbox");
+}
+
+void *uwp_get_corewindow(void)
+{
+    return (void *)CoreWindow::GetForCurrentThread();
+}
+
+int uwp_get_height(void)
+{
+    /* This function must be performed within UI thread,
+     * otherwise it will cause a crash in specific cases
+     * https://github.com/libretro/RetroArch/issues/13491 */
+    float surface_scale = 0;
+    int ret = -1;
+    volatile bool finished = false;
+    Windows::ApplicationModel::Core::CoreApplication::MainView->CoreWindow->Dispatcher->RunAsync(
+        CoreDispatcherPriority::Normal,
+        ref new Windows::UI::Core::DispatchedHandler([&surface_scale, &ret, &finished]() {
+            if (is_running_on_xbox()) {
+                const Windows::Graphics::Display::Core::HdmiDisplayInformation ^ hdi = Windows::Graphics::Display::Core::HdmiDisplayInformation::GetForCurrentView();
+                if (hdi)
+                    ret = Windows::Graphics::Display::Core::HdmiDisplayInformation::GetForCurrentView()->GetCurrentDisplayMode()->ResolutionHeightInRawPixels;
+            }
+
+            if (ret == -1) {
+                const LONG32 resolution_scale = static_cast<LONG32>(Windows::Graphics::Display::DisplayInformation::GetForCurrentView()->ResolutionScale);
+                surface_scale = static_cast<float>(resolution_scale) / 100.0f;
+                ret = static_cast<LONG32>(
+                    CoreWindow::GetForCurrentThread()->Bounds.Height * surface_scale);
+            }
+            finished = true;
+        }));
+    Windows::UI::Core::CoreWindow ^ corewindow = Windows::UI::Core::CoreWindow::GetForCurrentThread();
+    while (!finished) {
+        if (corewindow)
+            corewindow->Dispatcher->ProcessEvents(Windows::UI::Core::CoreProcessEventsOption::ProcessAllIfPresent);
+    }
+    return ret;
+}
+
+int uwp_get_width(void)
+{
+    /* This function must be performed within UI thread,
+     * otherwise it will cause a crash in specific cases
+     * https://github.com/libretro/RetroArch/issues/13491 */
+    float surface_scale = 0;
+    int returnValue = -1;
+    volatile bool finished = false;
+    Windows::ApplicationModel::Core::CoreApplication::MainView->CoreWindow->Dispatcher->RunAsync(
+        CoreDispatcherPriority::Normal,
+        ref new Windows::UI::Core::DispatchedHandler([&surface_scale, &returnValue, &finished]() {
+            if (is_running_on_xbox()) {
+                const Windows::Graphics::Display::Core::HdmiDisplayInformation ^ hdi = Windows::Graphics::Display::Core::HdmiDisplayInformation::GetForCurrentView();
+                if (hdi)
+                    returnValue = Windows::Graphics::Display::Core::HdmiDisplayInformation::GetForCurrentView()->GetCurrentDisplayMode()->ResolutionWidthInRawPixels;
+            }
+
+            if (returnValue == -1) {
+                const LONG32 resolution_scale = static_cast<LONG32>(Windows::Graphics::Display::DisplayInformation::GetForCurrentView()->ResolutionScale);
+                surface_scale = static_cast<float>(resolution_scale) / 100.0f;
+                returnValue = static_cast<LONG32>(
+                    CoreWindow::GetForCurrentThread()->Bounds.Width * surface_scale);
+            }
+            finished = true;
+        }));
+    Windows::UI::Core::CoreWindow ^ corewindow = Windows::UI::Core::CoreWindow::GetForCurrentThread();
+    while (!finished) {
+        if (corewindow)
+            corewindow->Dispatcher->ProcessEvents(Windows::UI::Core::CoreProcessEventsOption::ProcessAllIfPresent);
+    }
+
+    return returnValue;
+}
+
 int WINRT_CreateWindow(_THIS, SDL_Window *window)
 {
     // Make sure that only one window gets created, at least until multimonitor
@@ -659,7 +736,7 @@ int WINRT_CreateWindow(_THIS, SDL_Window *window)
     /* Make note of the requested window flags, before they start getting changed. */
     const Uint32 requestedFlags = window->flags;
 
-#if SDL_VIDEO_OPENGL_EGL 
+#if SDL_VIDEO_OPENGL_EGL
     /* Setup the EGL surface, but only if OpenGL ES 2 was requested. */
     if (!(window->flags & SDL_WINDOW_OPENGL)) {
         /* OpenGL ES 2 wasn't requested.  Don't set up an EGL surface. */
@@ -748,22 +825,22 @@ int WINRT_CreateWindow(_THIS, SDL_Window *window)
         window->w = WINRT_DIPS_TO_PHYSICAL_PIXELS(data->coreWindow->Bounds.Width);
         window->h = WINRT_DIPS_TO_PHYSICAL_PIXELS(data->coreWindow->Bounds.Height);
 #else
-        /* On Windows 10, we occasionally get control over window size.  For windowed
-           mode apps, try this.
+    /* On Windows 10, we occasionally get control over window size.  For windowed
+       mode apps, try this.
+    */
+    bool didSetSize = false;
+    if (!(requestedFlags & SDL_WINDOW_FULLSCREEN)) {
+        const Windows::Foundation::Size size(WINRT_PHYSICAL_PIXELS_TO_DIPS(window->w),
+                                             WINRT_PHYSICAL_PIXELS_TO_DIPS(window->h));
+        didSetSize = data->appView->TryResizeView(size);
+    }
+    if (!didSetSize) {
+        /* We either weren't able to set the window size, or a request for
+           fullscreen was made.  Get window-size info from the OS.
         */
-        bool didSetSize = false;
-        if (!(requestedFlags & SDL_WINDOW_FULLSCREEN)) {
-            const Windows::Foundation::Size size(WINRT_PHYSICAL_PIXELS_TO_DIPS(window->w),
-                                                 WINRT_PHYSICAL_PIXELS_TO_DIPS(window->h));
-            didSetSize = data->appView->TryResizeView(size);
-        }
-        if (!didSetSize) {
-            /* We either weren't able to set the window size, or a request for
-               fullscreen was made.  Get window-size info from the OS.
-            */
-            window->w = WINRT_DIPS_TO_PHYSICAL_PIXELS(data->coreWindow->Bounds.Width);
-            window->h = WINRT_DIPS_TO_PHYSICAL_PIXELS(data->coreWindow->Bounds.Height);
-        }
+        window->w = uwp_get_width();  // WINRT_DIPS_TO_PHYSICAL_PIXELS(data->coreWindow->Bounds.Width);
+        window->h = uwp_get_height(); // WINRT_DIPS_TO_PHYSICAL_PIXELS(data->coreWindow->Bounds.Height);
+    }
 #endif
 
         WINRT_UpdateWindowFlags(
@@ -834,9 +911,9 @@ void WINRT_DestroyWindow(_THIS, SDL_Window *window)
     }
 }
 
-SDL_bool WINRT_GetWindowWMInfo(_THIS, SDL_Window * window, SDL_SysWMinfo * info)
+SDL_bool WINRT_GetWindowWMInfo(_THIS, SDL_Window *window, SDL_SysWMinfo *info)
 {
-    SDL_WindowData * data = (SDL_WindowData *) window->driverdata;
+    SDL_WindowData *data = (SDL_WindowData *)window->driverdata;
 
     if (info->version.major <= SDL_MAJOR_VERSION) {
         info->subsystem = SDL_SYSWM_WINRT;
