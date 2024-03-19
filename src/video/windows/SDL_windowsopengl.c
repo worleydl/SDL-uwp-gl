@@ -217,11 +217,11 @@ int WIN_GL_LoadLibrary(_THIS, const char *path)
        public API functions.
     */
     //TODO
-    #ifndef __WINRT__
+    //#ifndef __WINRT__
     ++_this->gl_config.driver_loaded;
     WIN_GL_InitExtensions(_this);
     --_this->gl_config.driver_loaded;
-    #endif
+    //#endif
 
     return 0;
 }
@@ -423,7 +423,11 @@ static SDL_bool HasExtension(const char *extension, const char *extensions)
     return SDL_FALSE;
 }
 
-#ifndef __WINRT__
+#ifdef __WINRT__
+HWND uwp_window_handle();
+#endif
+
+//#ifndef __WINRT__
 void WIN_GL_InitExtensions(_THIS)
 {
     /* *INDENT-OFF* */ /* clang-format off */
@@ -439,13 +443,19 @@ void WIN_GL_InitExtensions(_THIS)
         return;
     }
 
+    #ifdef __WINRT__
+    hwnd = uwp_window_handle();
+    #else
     hwnd =
         CreateWindow(SDL_Appname, SDL_Appname, (WS_POPUP | WS_DISABLED), 0, 0,
                      10, 10, NULL, NULL, SDL_Instance, NULL);
+    #endif
     if (!hwnd) {
         return;
     }
+#ifndef __WINRT__
     WIN_PumpEvents(_this);
+    #endif
 
     hdc = GetDC(hwnd);
 
@@ -527,8 +537,10 @@ void WIN_GL_InitExtensions(_THIS)
     _this->gl_data->wglMakeCurrent(hdc, NULL);
     _this->gl_data->wglDeleteContext(hglrc);
     ReleaseDC(hwnd, hdc);
+#ifndef __WINRT__
     DestroyWindow(hwnd);
     WIN_PumpEvents(_this);
+#endif
 }
 
 static int WIN_GL_ChoosePixelFormatARB(_THIS, int *iAttribs, float *fAttribs)
@@ -540,10 +552,14 @@ static int WIN_GL_ChoosePixelFormatARB(_THIS, int *iAttribs, float *fAttribs)
     int pixel_format = 0;
     unsigned int matching;
 
+#ifdef __WINRT__
+    hwnd = uwp_window_handle();
+#else
     hwnd =
         CreateWindow(SDL_Appname, SDL_Appname, (WS_POPUP | WS_DISABLED), 0, 0,
                      10, 10, NULL, NULL, SDL_Instance, NULL);
     WIN_PumpEvents(_this);
+#endif
 
     hdc = GetDC(hwnd);
 
@@ -565,8 +581,10 @@ static int WIN_GL_ChoosePixelFormatARB(_THIS, int *iAttribs, float *fAttribs)
         _this->gl_data->wglDeleteContext(hglrc);
     }
     ReleaseDC(hwnd, hdc);
+#ifndef __WINRT__
     DestroyWindow(hwnd);
     WIN_PumpEvents(_this);
+#endif
 
     return pixel_format;
 }
@@ -700,7 +718,7 @@ int WIN_GL_SetupWindow(_THIS, SDL_Window *window)
     WIN_GL_MakeCurrent(_this, current_win, current_ctx);
     return retval;
 }
-#endif
+//#endif
 
 SDL_bool WIN_GL_UseEGL(_THIS)
 {

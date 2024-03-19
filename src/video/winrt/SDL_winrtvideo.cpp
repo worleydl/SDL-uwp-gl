@@ -635,6 +635,16 @@ void *uwp_get_corewindow(void)
     return (void *)CoreWindow::GetForCurrentThread();
 }
 
+extern "C" {
+HWND uwp_window_handle()
+{
+    CoreWindow ^ coreWindow = CoreWindow::GetForCurrentThread();
+    Platform::Agile<Windows::UI::Core::CoreWindow> m_window;
+    m_window = coreWindow;
+    return (HWND) reinterpret_cast<IUnknown *>(m_window.Get());
+}
+}
+
 int uwp_get_height(void)
 {
     /* This function must be performed within UI thread,
