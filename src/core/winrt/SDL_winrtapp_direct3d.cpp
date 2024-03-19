@@ -362,16 +362,34 @@ void SDL_WinRTApp::Run()
     if (WINRT_SDLAppEntryPoint) {
         // TODO, WinRT: pass the C-style main() a reasonably realistic
         // representation of command line arguments.
-        int argc = 1;
-        char **argv = (char **)SDL_malloc(2 * sizeof(*argv));
-        if (argv == NULL) {
-            return;
+        if (!m_cmd.empty())
+        {
+            size_t pos = 0;
+            std::vector<char*> argv;
+
+            while (pos != string::npos)
+            {
+                argv.push_back(&m_cmd[0] + pos + 1);
+                pos = m_cmd.find(' ', pos + 1);
+            }
+            if (!argv.empty())
+                WINRT_SDLAppEntryPoint(argv.size(), argv.data());
+
+            m_cmd.clear();
         }
-        argv[0] = SDL_strdup("WinRTApp");
-        argv[1] = NULL;
-        WINRT_SDLAppEntryPoint(argc, argv);
-        SDL_free(argv[0]);
-        SDL_free(argv);
+        else {
+            int argc = 1;
+            //avoid it just being empty
+            char** argv = (char**)SDL_malloc(2 * sizeof(*argv));
+            if (argv == NULL) {
+                return;
+            }
+            argv[0] = SDL_strdup("WinRTApp");
+            argv[1] = NULL;
+            WINRT_SDLAppEntryPoint(argc, argv);
+            SDL_free(argv[0]);
+            SDL_free(argv);
+        }
     }
 
     //Retropass handler
@@ -634,16 +652,17 @@ void SDL_WinRTApp::OnAppActivated(CoreApplicationView ^ applicationView, IActiva
             ProtocolActivatedEventArgs^)(args);
         auto query = protocolActivatedEventArgs->Uri->QueryParsed;
 
+
         for (uint32_t i = 0; i < query->Size; i++) {
             auto arg = query->GetAt(i);
 
             // parse command line string
             if (arg->Name == L"cmd") {
-                std::wstring argVal(arg->Value->Begin(), arg->Value->End());
-                // Strip the executable from the cmd argument
-                //if (argVal.rfind(L".exe", 0) == 0) {
-                //    argVal = argVal.substr(15, argVal.length());
-                //}
+                //we do not support unicode for arguments anyway
+                m_cmd = std::string (arg->Value->Begin(), arg->Value->End());
+
+
+                //
 
                 //std::istringstream iss(argVal);
                 //std::string s;

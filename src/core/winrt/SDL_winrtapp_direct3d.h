@@ -19,6 +19,7 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 #include <Windows.h>
+#include <string>
 
 extern int SDL_WinRTInitNonXAMLApp(int (*mainFunction)(int, char **));
 
@@ -93,6 +94,7 @@ ref class SDL_WinRTApp sealed : public Windows::ApplicationModel::Core::IFramewo
     bool m_windowClosed;
     bool m_windowVisible;
     Platform::String^ m_launchOnExit;
+    std::string m_cmd;
 };
 
 extern SDL_WinRTApp ^ SDL_WinRTGlobalApp;
