@@ -716,9 +716,12 @@ int WINRT_CreateWindow(_THIS, SDL_Window *window)
 {
     // Make sure that only one window gets created, at least until multimonitor
     // support is added.
+    // DLW: Disabled this check, an application should be able to make multiple windows even if only capable of showing one at a time.
+    /*
     if (WINRT_GlobalSDLWindow != NULL) {
         return SDL_SetError("WinRT only supports one window");
     }
+    */
 
     SDL_WindowData *data = new SDL_WindowData; /* use 'new' here as SDL_WindowData may use WinRT/C++ types */
     if (!data) {

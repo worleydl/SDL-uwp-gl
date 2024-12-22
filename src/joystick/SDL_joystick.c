@@ -1360,10 +1360,15 @@ static SDL_bool SDL_PrivateJoystickShouldIgnoreEvent()
         return SDL_FALSE;
     }
 
+    // DLW: Disabled this check for UWP which only shows a single window at a time but doesn't seem to grok focus which switching
+    // TODO: Likely need similar handling for keyboard events
+#ifndef __XBOXSERIES__
     if (SDL_HasWindows() && SDL_GetKeyboardFocus() == NULL) {
         /* We have windows but we don't have focus, ignore the event. */
         return SDL_TRUE;
     }
+#endif
+
     return SDL_FALSE;
 }
 
