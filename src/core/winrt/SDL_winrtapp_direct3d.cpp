@@ -85,6 +85,7 @@ extern "C" void D3D11_Trim(SDL_Renderer *);
 // SDL_InitSubSystem(SDL_INIT_VIDEO), or something inside
 // SDL_CreateWindow().
 SDL_WinRTApp ^ SDL_WinRTGlobalApp = nullptr;
+CoreWindow ^ _coreWindow = nullptr;
 
 ref class SDLApplicationSource sealed : Windows::ApplicationModel::Core::IFrameworkViewSource
 {
@@ -115,7 +116,8 @@ int SDL_WinRTInitNonXAMLApp(int (*mainFunction)(int, char **))
 
 static void WINRT_ProcessWindowSizeChange() // TODO: Pass an SDL_Window-identifying thing into WINRT_ProcessWindowSizeChange()
 {
-    CoreWindow ^ coreWindow = CoreWindow::GetForCurrentThread();
+    CoreWindow ^ coreWindow = _coreWindow;
+
     if (coreWindow) {
         if (WINRT_GlobalSDLWindow) {
             SDL_Window *window = WINRT_GlobalSDLWindow;
@@ -448,13 +450,13 @@ bool SDL_WinRTApp::ShouldWaitForAppResumeEvents()
 
 void SDL_WinRTApp::PumpEvents()
 {
-    if (!m_windowClosed) {
+    if (!m_windowClosed && _coreWindow) {
         if (!ShouldWaitForAppResumeEvents()) {
             /* This is the normal way in which events should be pumped.
              * 'ProcessAllIfPresent' will make ProcessEvents() process anywhere
              * from zero to N events, and will then return.
              */
-            CoreWindow::GetForCurrentThread()->Dispatcher->ProcessEvents(CoreProcessEventsOption::ProcessAllIfPresent);
+            _coreWindow->Dispatcher->ProcessEvents(CoreProcessEventsOption::ProcessAllIfPresent);
         } else {
             /* This style of event-pumping, with 'ProcessOneAndAllPending',
              * will cause anywhere from one to N events to be processed.  If
@@ -463,7 +465,7 @@ void SDL_WinRTApp::PumpEvents()
              * available, and will not return (to the caller) until this
              * happens!  This should only occur when the app is hidden.
              */
-            CoreWindow::GetForCurrentThread()->Dispatcher->ProcessEvents(CoreProcessEventsOption::ProcessOneAndAllPending);
+            _coreWindow->Dispatcher->ProcessEvents(CoreProcessEventsOption::ProcessOneAndAllPending);
         }
     }
 }
@@ -643,7 +645,8 @@ void SDL_WinRTApp::OnWindowClosed(CoreWindow ^ sender, CoreWindowEventArgs ^ arg
 
 void SDL_WinRTApp::OnAppActivated(CoreApplicationView ^ applicationView, IActivatedEventArgs ^ args)
 {
-    CoreWindow::GetForCurrentThread()->Activate();
+    _coreWindow = CoreWindow::GetForCurrentThread();
+    _coreWindow->Activate();
 
     if (args->Kind ==
         Windows::ApplicationModel::Activation::ActivationKind::Protocol) {

@@ -74,6 +74,9 @@ extern "C" {
 #include "SDL_winrtmouse_c.h"
 #include "SDL_winrtvideo_cpp.h"
 
+/* DLW: Track core window for UWP to better support multithreading */
+static CoreWindow^ _uwp_coreWindow = nullptr;
+
 /* Initialization/Query functions */
 static int WINRT_VideoInit(_THIS);
 static int WINRT_InitModes(_THIS);
@@ -93,6 +96,15 @@ extern void WINRT_SuspendScreenSaver(_THIS);
 
 /* SDL-internal globals: */
 SDL_Window *WINRT_GlobalSDLWindow = NULL;
+
+CoreWindow^ uwp_get_corewindow(void)
+{
+    if (!_uwp_coreWindow) {
+        _uwp_coreWindow = CoreWindow::GetForCurrentThread();
+    }
+
+    return _uwp_coreWindow;
+}
 
 /* WinRT driver bootstrap functions */
 
@@ -434,7 +446,7 @@ static int WINRT_AddDisplaysForAdapter(_THIS, IDXGIFactory2 *dxgiFactory2, int a
 #if SDL_WINRT_USE_APPLICATIONVIEW
                 ApplicationView ^ appView = ApplicationView::GetForCurrentView();
 #endif
-                CoreWindow ^ coreWin = CoreWindow::GetForCurrentThread();
+                CoreWindow ^ coreWin = uwp_get_corewindow();
                 SDL_zero(display);
                 SDL_zero(mode);
                 display.name = "DXGI Display-detection Workaround";
@@ -630,15 +642,12 @@ bool is_running_on_xbox(void)
     return (device_family == L"Windows.Xbox");
 }
 
-void *uwp_get_corewindow(void)
-{
-    return (void *)CoreWindow::GetForCurrentThread();
-}
+
 
 extern "C" {
 HWND uwp_window_handle()
 {
-    CoreWindow ^ coreWindow = CoreWindow::GetForCurrentThread();
+    CoreWindow ^ coreWindow = uwp_get_corewindow();
     Platform::Agile<Windows::UI::Core::CoreWindow> m_window;
     m_window = coreWindow;
     return (HWND) reinterpret_cast<IUnknown *>(m_window.Get());
@@ -666,11 +675,11 @@ int uwp_get_height(void)
                 const LONG32 resolution_scale = static_cast<LONG32>(Windows::Graphics::Display::DisplayInformation::GetForCurrentView()->ResolutionScale);
                 surface_scale = static_cast<float>(resolution_scale) / 100.0f;
                 ret = static_cast<LONG32>(
-                    CoreWindow::GetForCurrentThread()->Bounds.Height * surface_scale);
+                    uwp_get_corewindow()->Bounds.Height * surface_scale);
             }
             finished = true;
         }));
-    Windows::UI::Core::CoreWindow ^ corewindow = Windows::UI::Core::CoreWindow::GetForCurrentThread();
+    Windows::UI::Core::CoreWindow ^ corewindow = uwp_get_corewindow();
     while (!finished) {
         if (corewindow)
             corewindow->Dispatcher->ProcessEvents(Windows::UI::Core::CoreProcessEventsOption::ProcessAllIfPresent);
@@ -699,11 +708,11 @@ int uwp_get_width(void)
                 const LONG32 resolution_scale = static_cast<LONG32>(Windows::Graphics::Display::DisplayInformation::GetForCurrentView()->ResolutionScale);
                 surface_scale = static_cast<float>(resolution_scale) / 100.0f;
                 returnValue = static_cast<LONG32>(
-                    CoreWindow::GetForCurrentThread()->Bounds.Width * surface_scale);
+                    uwp_get_corewindow()->Bounds.Width * surface_scale);
             }
             finished = true;
         }));
-    Windows::UI::Core::CoreWindow ^ corewindow = Windows::UI::Core::CoreWindow::GetForCurrentThread();
+    Windows::UI::Core::CoreWindow ^ corewindow = uwp_get_corewindow();
     while (!finished) {
         if (corewindow)
             corewindow->Dispatcher->ProcessEvents(Windows::UI::Core::CoreProcessEventsOption::ProcessAllIfPresent);
@@ -739,7 +748,7 @@ int WINRT_CreateWindow(_THIS, SDL_Window *window)
 #ifndef __XBOXSERIES__
     if (!WINRT_XAMLWasEnabled) {
 #endif
-        data->coreWindow = CoreWindow::GetForCurrentThread();
+        data->coreWindow = uwp_get_corewindow();
 #if SDL_WINRT_USE_APPLICATIONVIEW
         data->appView = ApplicationView::GetForCurrentView();
 #endif
