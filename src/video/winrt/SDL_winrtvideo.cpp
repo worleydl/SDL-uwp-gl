@@ -331,8 +331,13 @@ static int WINRT_AddDisplaysForOutput(_THIS, IDXGIAdapter1 *dxgiAdapter1, int ou
 
     SDL_zero(modeToMatch);
     modeToMatch.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+#ifndef __XBOXSERIES__
     modeToMatch.Width = (dxgiOutputDesc.DesktopCoordinates.right - dxgiOutputDesc.DesktopCoordinates.left);
     modeToMatch.Height = (dxgiOutputDesc.DesktopCoordinates.bottom - dxgiOutputDesc.DesktopCoordinates.top);
+#else
+    modeToMatch.Width = uwp_get_width();
+    modeToMatch.Height = uwp_get_height();
+#endif
     hr = dxgiOutput->FindClosestMatchingMode(&modeToMatch, &closestMatch, NULL);
     if (hr == DXGI_ERROR_NOT_CURRENTLY_AVAILABLE) {
         /* DXGI_ERROR_NOT_CURRENTLY_AVAILABLE gets returned by IDXGIOutput::FindClosestMatchingMode
@@ -345,11 +350,17 @@ static int WINRT_AddDisplaysForOutput(_THIS, IDXGIAdapter1 *dxgiAdapter1, int ou
         */
         SDL_DisplayMode mode;
         SDL_zero(mode);
+        // DLW: Making it here for UWP so get actual resolution from uwp helpers
         display.name = "Windows Simulator / Terminal Services Display";
+        mode.format = DXGI_FORMAT_B8G8R8A8_UNORM;
+#ifndef __XBOXSERIES__
         mode.w = (dxgiOutputDesc.DesktopCoordinates.right - dxgiOutputDesc.DesktopCoordinates.left);
         mode.h = (dxgiOutputDesc.DesktopCoordinates.bottom - dxgiOutputDesc.DesktopCoordinates.top);
-        mode.format = DXGI_FORMAT_B8G8R8A8_UNORM;
-        mode.refresh_rate = 0; /* Display mode is unknown, so just fill in zero, as specified by SDL's header files */
+#else
+        mode.w = uwp_get_width();
+        mode.h = uwp_get_height();
+#endif
+        mode.refresh_rate = uwp_get_refresh(); /* This ends up getting used by some apps so set it */ 
         display.desktop_mode = mode;
         display.current_mode = mode;
         if (!SDL_AddDisplayMode(&display, &mode)) {
@@ -710,6 +721,34 @@ int uwp_get_width(void)
                 returnValue = static_cast<LONG32>(
                     uwp_get_corewindow()->Bounds.Width * surface_scale);
             }
+            finished = true;
+        }));
+    Windows::UI::Core::CoreWindow ^ corewindow = uwp_get_corewindow();
+    while (!finished) {
+        if (corewindow)
+            corewindow->Dispatcher->ProcessEvents(Windows::UI::Core::CoreProcessEventsOption::ProcessAllIfPresent);
+    }
+
+    return returnValue;
+}
+
+double uwp_get_refresh(void)
+{
+    /* This function must be performed within UI thread,
+     * otherwise it will cause a crash in specific cases
+     * https://github.com/libretro/RetroArch/issues/13491 */
+    float surface_scale = 0;
+    double returnValue = -1;
+    volatile bool finished = false;
+    Windows::ApplicationModel::Core::CoreApplication::MainView->CoreWindow->Dispatcher->RunAsync(
+        CoreDispatcherPriority::Normal,
+        ref new Windows::UI::Core::DispatchedHandler([&surface_scale, &returnValue, &finished]() {
+            if (is_running_on_xbox()) {
+                const Windows::Graphics::Display::Core::HdmiDisplayInformation ^ hdi = Windows::Graphics::Display::Core::HdmiDisplayInformation::GetForCurrentView();
+                if (hdi)
+                    returnValue = Windows::Graphics::Display::Core::HdmiDisplayInformation::GetForCurrentView()->GetCurrentDisplayMode()->RefreshRate;
+            }
+
             finished = true;
         }));
     Windows::UI::Core::CoreWindow ^ corewindow = uwp_get_corewindow();

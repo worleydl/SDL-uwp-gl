@@ -122,3 +122,16 @@ typedef struct SDL_WindowData
 #endif
 #endif
 } SDL_WindowData;
+
+
+// Export uwp screen helpers
+// Not really needed but saves re-organizing winrt video code
+#ifdef __cplusplus_winrt
+extern "C" {
+#endif
+int uwp_get_width(void);
+int uwp_get_height(void);
+double uwp_get_refresh(void);
+#ifdef __cplusplus_winrt
+}
+#endif
